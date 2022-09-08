@@ -78,7 +78,7 @@ $(document).ready(function(){
 
             this.g_cost = this.parent == null ? 0 : this.parent.g_cost + 1;
             this.h_cost = Math.abs(this.x - end_x) + Math.abs(this.y - end_y);
-            this.f_cost = 0 * this.g_cost + 1 * this.h_cost;
+            this.f_cost = this.g_cost + this.h_cost;
         }
         explore(){
             open_nodes.splice(open_nodes.indexOf(this), 1);
@@ -122,11 +122,11 @@ $(document).ready(function(){
             draw_tile(obstruction[0], obstruction[1])
         }
 
-        /*
-        ctx.fillStyle = "yellow";
+        ctx.fillStyle = "orange";
         for (var current_node of open_nodes){
             draw_tile(current_node.x, current_node.y);
         }
+        /*
 
         ctx.fillStyle = "orange";
         for (current_node of closed_nodes){
