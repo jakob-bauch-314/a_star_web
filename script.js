@@ -31,24 +31,24 @@ $(document).ready(function(){
     }
 
     function draw_tile(square_x, square_y){
-        /*
+       ctx.fillRect(square_x * cell_size, square_y * cell_size, cell_size, cell_size);
+    }
+
+    function draw_circle(circle_x, circle_y){
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc((square_x + 0.5) * cell_size, (square_y + 0.5) * cell_size, cell_size * line_width/2, 0, 2 * Math.PI);
+        ctx.arc((circle_x + 0.5) * cell_size, (circle_y + 0.5) * cell_size, cell_size * line_width/2, 0, 2 * Math.PI);
         ctx.fill();
         ctx.closePath();
-        */
-       ctx.fillRect(square_x * cell_size, square_y * cell_size, cell_size, cell_size);
     }
 
     var obstructions = [
     ]
 
-    var start_x = Math.floor(Math.random() * size_x);
-    var start_y = Math.floor(Math.random() * size_y);
-
-    var end_x = Math.floor(Math.random() * size_x);
-    var end_y = Math.floor(Math.random() * size_y);
+    var start_x = 0;
+    var start_y = 0;
+    var end_x = size_x - 1;
+    var end_y = size_y - 1;
 
     for (var i = 0; i < size_x * size_y * 0.3; i++){
         var x = Math.floor(Math.random() * size_x);
@@ -65,13 +65,6 @@ $(document).ready(function(){
 
         constructor(x, y, parent){
 
-            var possible = true;
-            for (var obstruction of obstructions){if (obstruction[0] == x && obstruction[1] == y) {possible = false}}
-            for (var closed_node of closed_nodes){if (closed_node.x == x && closed_node.y == y) {possible = false}}
-            for (var open_node of open_nodes){if (open_node.x == x && open_node.y == y) {possible = false}}
-            if (x < 0 || x >= size_x || y < 0 || y >= size_y) possible = false;
-            if(possible) open_nodes.push(this);
-
             this.x = x;
             this.y = y;
             this.parent = parent;
@@ -79,6 +72,20 @@ $(document).ready(function(){
             this.g_cost = this.parent == null ? 0 : this.parent.g_cost + 1;
             this.h_cost = Math.abs(this.x - end_x) + Math.abs(this.y - end_y);
             this.f_cost = this.g_cost + this.h_cost;
+
+            var possible = true;
+            for (var obstruction of obstructions){if (obstruction[0] == x && obstruction[1] == y) {possible = false}}
+            for (var closed_node of closed_nodes){if (closed_node.x == x && closed_node.y == y) {possible = false}}
+
+            for (var open_node of open_nodes){if (open_node.x == x && open_node.y == y) {
+                possible = false
+                if (this.f_cost < open_node.f_cost){
+                    possible = true;
+                    open_nodes.splice(open_nodes.indexOf(open_node), 1);
+                }
+            }}
+            if (x < 0 || x >= size_x || y < 0 || y >= size_y) possible = false;
+            if(possible) open_nodes.push(this);
         }
         explore(){
             open_nodes.splice(open_nodes.indexOf(this), 1);
@@ -117,34 +124,42 @@ $(document).ready(function(){
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "brown";
+        ctx.fillStyle = "#6b5b95";
         for (var obstruction of obstructions){
             draw_tile(obstruction[0], obstruction[1])
         }
 
-        ctx.fillStyle = "orange";
+        ctx.fillStyle = "#ff7b25";
         for (var current_node of open_nodes){
-            draw_tile(current_node.x, current_node.y);
+            draw_circle(current_node.x, current_node.y);
         }
-        /*
 
-        ctx.fillStyle = "orange";
+        ctx.fillStyle = "#feb236";
         for (current_node of closed_nodes){
-            draw_tile(current_node.x, current_node.y);
+            draw_circle(current_node.x, current_node.y);
         }
-        */
 
-        ctx.fillStyle = "slateblue";
+        ctx.fillStyle = "#d64161";
         draw_tile(end_x, end_y);
         draw_tile(start_x, start_y);
+        draw_circle(current.x, current.y)
 
-        end_node == null ? trace(current) : trace(end_node);
+        var running_node = current;
+        ctx.strokeStyle = "#d64161";
+        var path = [];
+        while(running_node != null){
+            path.push([running_node.x, running_node.y]);
+            running_node = running_node.parent;
+        }
+        draw_line(path);
 
         // algorithm
 
         if (end_node == null){
             current = open_nodes.reduce((prev, curr) => {return prev.f_cost < curr.f_cost ? prev : curr;}); //get node with least cost
             end_node = current.explore();
+        } else {
+            current = end_node;
         }
 
         setTimeout(()=>requestAnimationFrame(Update), 0);
