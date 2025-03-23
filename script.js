@@ -1,22 +1,21 @@
 
-const size_x = 16;
-const size_y = 16;
+const size_x = 33;
+const size_y = 33;
 
 const start_x = 0;
-const start_y = 0;
+const start_y = 17;
 
-const end_x = 15;
-const end_y = 15;
+const end_x = 32;
+const end_y =17;
 
-var obstacles = [
-    {x:5,y:0}
-];
+var obstacles = [];
 var open_nodes = [];
 var closed_nodes = [];
 
 class Node extends List{
-    constructor(value){
+    constructor(value, next){
         super(value);
+        this.next = next;
 
         // dont initialize node if at same place as obstacle or closed node
         for(var node of closed_nodes) if (node.value.x == value.x && node.value.y == value.y) return;
@@ -42,7 +41,7 @@ class Node extends List{
 
         // sort node in at right place in open_nodes
         for (var i in open_nodes) {
-            if (this.f_cost < open_nodes[i].h_cost){
+            if (this.f_cost <= open_nodes[i].f_cost){
                 open_nodes.splice(i, 0, this);
                 return;
             }
@@ -56,11 +55,10 @@ class Node extends List{
         if (this.value.x == end_x && this.value.y == end_y) return true;
 
         // create neighbors
-        new Node({x:this.value.x-1, y:this.value.y}).next = this;
-        new Node({x:this.value.x+1, y:this.value.y}).next = this;
-        new Node({x:this.value.x, y:this.value.y-1}).next = this;
-        new Node({x:this.value.x, y:this.value.y+1}).next = this;
-
+        new Node({x:this.value.x-1, y:this.value.y}, this);
+        new Node({x:this.value.x+1, y:this.value.y}, this);
+        new Node({x:this.value.x, y:this.value.y-1}, this);
+        new Node({x:this.value.x, y:this.value.y+1}, this);
         // close node
         open_nodes.splice(open_nodes.indexOf(this), 1);
         closed_nodes.push(this);
@@ -70,25 +68,79 @@ class Node extends List{
 
 $(document).ready(function(){
 
+    // setup grid
     const canvas = $("#canvas")[0];
-    canvas.width = 1500;
-    canvas.height = 750;
-    const grid = new Grid(size_x, size_y, 24, canvas);
-    const start = new Node({x:start_x, y:start_y}, null);
-
-    requestAnimationFrame(function Update(){
-        grid.clear();
-
-        // draw everything
-        for(cell of obstacles) grid.draw_square(cell, "white", 0.1);
-        for(node of open_nodes) grid.draw_square(node.value, "green", 0.1);
-        for(node of closed_nodes) grid.draw_square(node.value, "blue", 0.1);
-        grid.draw_square({x:start_x, y:start_y}, "lightblue", 0.1);
-        grid.draw_square({x:end_x, y:end_y}, "lightblue", 0.1);
-
-        console.log(open_nodes);
-        var found = open_nodes[0].explore();
-
-        if (!found) setTimeout(()=>requestAnimationFrame(Update), 20);
+    const grid = new Grid({
+        width:      size_x,
+        height:     size_y,
+        cell_size:  24,
+        canvas:     canvas,
+        fullscreen: true,
+        clickable:  true
     });
+
+    // setup ui
+    grid.on_click = (x, y) => {
+        for (cell of obstacles)if (cell.x == x && cell.y == y)return;
+        for (node of open_nodes)if (node.value.x == x && node.value.y == y)return;
+        for (node of closed_nodes)if (node.value.x == x && node.value.y == y)return;
+        if (x == start_x && y == start_y) return;
+        if (x == end_x && y == end_y) return;
+        obstacles.push({x:x, y:y});
+    }
+    var start = new Node({x:start_x, y:start_y}, null);
+
+    var mode = "Pause";
+    $("#pause").click(()=>{mode = "Pause"})
+    $("#run").click(()=>{mode = "Run"})
+    $("#restart").click(()=>{
+        open_nodes = [];
+        closed_nodes = [];
+        start = new Node({x:start_x, y:start_y}, null);
+    })
+    $("#reset").click(()=>{
+        open_nodes = [];
+        closed_nodes = [];
+        obstacles = [];
+        start = new Node({x:start_x, y:start_y}, null);
+    })
+
+    grid.redraw = ()=>{
+        grid.clear();
+        for(cell of obstacles) grid.draw_square(cell, "crimson", 0.2);
+        for(node of open_nodes) grid.draw_square(node.value, "green", 0.2);
+        for(node of closed_nodes) grid.draw_square(node.value, "blue", 0.2);
+        grid.draw_square({x:start_x, y:start_y}, "lightblue", 0.2);
+        grid.draw_square({x:end_x, y:end_y}, "lightblue", 0.2);
+        grid.draw_line(open_nodes[0], "lightblue", 0.5);
+    }
+
+    // define modes
+    function Pause(){
+        grid.redraw();
+        Start();
+    }
+    
+    function Run(){
+        grid.redraw();
+        // if path done: go to pause mode
+        var found = open_nodes[0].explore();
+        if (found) mode = "Pause"
+
+        Start();
+    };
+
+    // start
+    function Start(){
+        switch(mode){
+            case "Pause":
+                requestAnimationFrame(Pause);
+                break;
+            case "Run":
+                requestAnimationFrame(Run);
+                break;
+        }
+    }
+
+    Start();
 })
